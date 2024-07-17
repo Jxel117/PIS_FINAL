@@ -4,18 +4,19 @@ PS2X ps2x;
 int error = 0;
 byte vibrate = 0;
 
-int IN1 = 13;
-int IN2 = 12;
-int IN3 = 9;
-int IN4 = 8;
-int ENA = 11;
-int ENB = 10;
+int IN1 = 36;
+int IN2 = 37;
+int IN3 = 35;
+int IN4 = 34;
+int ENA = 13;
+int ENB = 12;
 
 void motores(int v, int m1, int m2);
 
 void setup() {
   Serial.begin(9600);
 
+  // Definimos los pines del driver como salidas
   pinMode(IN1, OUTPUT);
   pinMode(IN2, OUTPUT);
   pinMode(IN3, OUTPUT);
@@ -23,7 +24,7 @@ void setup() {
   pinMode(ENA, OUTPUT);
   pinMode(ENB, OUTPUT);
 
-  // Asegúrate de que los motores están apagados al iniciar
+  // Motores Inicialmente Apagados
   digitalWrite(IN1, LOW);
   digitalWrite(IN2, LOW);
   digitalWrite(IN3, LOW);
@@ -31,33 +32,52 @@ void setup() {
   analogWrite(ENA, 0);
   analogWrite(ENB, 0);
 
+  // Asignamos pines al driver PS2
   delay(300);
-  error = ps2x.config_gamepad(4, 6, 5, 7, true, true);  //(clock, command, attention, data)
+  error = ps2x.config_gamepad(48, 50, 49, 51, true, true);  //(clock, command, attention, data)
 }
 
 void loop() {
   ps2x.read_gamepad(false, vibrate);
 
-  if (ps2x.Button(PSB_GREEN))  // Triangulo - Adelante
+  int m1 = 0;
+  int m2 = 0;
+
+  if (ps2x.Button(PSB_L1))  // L1 - Adelante
   {
-    Serial.println("Presionaste triangulo, Movinendo Adelante");
-    motores(1, 255, 255);
-  } else if (ps2x.Button(PSB_BLUE))  // X - Atras
+    Serial.println("Presionaste L1, Movinendo Adelante");
+    m1 = 255;
+    m2 = 255;
+  }
+  
+  if (ps2x.Button(PSB_R1))  // R1 - Atras
   {
-    Serial.println("Presionaste X, Moviendo Atras");
-    motores(-1, 255, 255);
-  } else if (ps2x.Button(PSB_PINK))  // Cuadrado -Izquierda
-  {
-    Serial.println("Presionaste cuadrado, Moviendo a la Izquierda");
-    motores(1, 255, 0);              
-  } else if (ps2x.Button(PSB_RED))  // Circulo - Derecha
-  {
-    Serial.println("Presionaste circulo, moviendo a la Derecha");
-    motores(1, 0, 255);  
-  } else {
-    motores(0, 0, 0);  
+    Serial.println("Presionaste R1, Moviendo Atras");
+    m1 = -255;
+    m2 = -255;
   }
 
+  if (ps2x.Button(PSB_L2))  // L2 - Izquierda
+  {
+    Serial.println("Presionaste L2, Moviendo a la Izquierda");
+    m1 = (m1 != 0) ? m1 / 2 : 255; // reduce la velocidad del motor derecho si ya está en movimiento
+    m2 = (m2 != 0) ? m2 : 0;
+  }
+  
+  if (ps2x.Button(PSB_R2))  // R2 - Derecha
+  {
+    Serial.println("Presionaste R2, Moviendo a la Derecha");
+    m1 = (m1 != 0) ? m1 : 0;
+    m2 = (m2 != 0) ? m2 / 2 : 255; // reduce la velocidad del motor izquierdo si ya está en movimiento
+  }
+  
+  // Si no hay botones presionados, detener motores
+  if (!ps2x.Button(PSB_L1) && !ps2x.Button(PSB_R1) && !ps2x.Button(PSB_L2) && !ps2x.Button(PSB_R2)) {
+    m1 = 0;
+    m2 = 0;
+  }
+
+  motores((m1 != 0 || m2 != 0) ? (m1 > 0 ? 1 : -1) : 0, abs(m1), abs(m2));
   delay(100);
 }
 
